@@ -21,42 +21,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet weak var window: NSWindow!
 
     func applicationDidFinishLaunching(aNotification: NSNotification) {
-        // Insert code here to initialize your application
+
         let canvasDims = NSSize(width: 300, height: 300)
         let canvasPos = NSMakePoint(0,0)
         let canvas = NSView(frame: NSMakeRect(canvasPos.x, canvasPos.y, canvasDims.width, canvasDims.height))
-        let label = NSTextField(frame: NSMakeRect(canvasPos.x+100, canvasPos.y+250, 100, 30))
-        label.stringValue = "Hello Swift"
         
         canvas.wantsLayer = true
 
-        if let newImage = fastColorAvg("marty") {
-            var theImageView = NSImageView(frame: NSMakeRect(10, 0, 200, 200))
-            theImageView.image = newImage
-            canvas.addSubview(theImageView)
-            
-            let avgCol = extractColor(newImage)
-            
-            let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
-            
-            print("Red: \(avgCol.redComponent), ")
-            print("green: \(avgCol.greenComponent), ")
-            print("blue: \(avgCol.blueComponent), ")
-            println("alpha: \(avgCol.alphaComponent)")
-            println("The complement:")
-            print("Red: \(complement.redComponent), ")
-            print("green: \(complement.greenComponent), ")
-            print("blue: \(complement.blueComponent), ")
-            println("alpha: \(complement.alphaComponent)")
-            
-            window.backgroundColor = complement
+        if let aFileURL = NSURL(fileURLWithPath: "/Users/teo/source/Apple/OSX/ColorAverage/ColorAverage/toored.jpg") {
+            if let avgCol = fastColorAvg(aFileURL) {
+                let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
+                
+                print("Red: \(avgCol.redComponent), ")
+                print("green: \(avgCol.greenComponent), ")
+                print("blue: \(avgCol.blueComponent), ")
+                println("alpha: \(avgCol.alphaComponent)")
+                println("The complement:")
+                print("Red: \(complement.redComponent), ")
+                print("green: \(complement.greenComponent), ")
+                print("blue: \(complement.blueComponent), ")
+                println("alpha: \(complement.alphaComponent)")
+                
+                window.backgroundColor = complement
 
+            }
         }
-        
-        //let avgCol = colorAvg("dontpanic")
-        
-        canvas.addSubview(label)
-        
 
         window.contentView.addSubview(canvas)
     }
@@ -65,24 +54,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Insert code here to tear down your application
     }
 
-    func fastColorAvg(aFileURL: String)-> NSImage? {
-        if let fileURL = NSURL(fileURLWithPath: "/Users/teo/source/Apple/OSX/ColorAverage/ColorAverage/toored.jpg") {
-            
-            var myCIImage = CIImage(contentsOfURL: fileURL)
-            let avgFilter = CIFilter(name: "CIAreaAverage")
-            avgFilter.setValue(myCIImage, forKey: kCIInputImageKey)
-            let imageRect = myCIImage.extent()
-            avgFilter.setValue(CIVector(CGRect: imageRect), forKey: kCIInputExtentKey)
-            
-            let rep = NSCIImageRep(CIImage:avgFilter.outputImage)
-            let newImage = NSImage(size: rep.size)
-            newImage.addRepresentation(rep)
-            return newImage
-//            NSImage *nsImage = [[NSImage alloc] initWithSize:rep.size];
-//            [nsImage addRepresentation:rep];
+    func fastColorAvg(fileURL: NSURL)-> NSColor? {
+        
+//        let startFastColorAvg = NSDate()
 
-        }
-        return nil
+        var myCIImage = CIImage(contentsOfURL: fileURL)
+        let avgFilter = CIFilter(name: "CIAreaAverage")
+        avgFilter.setValue(myCIImage, forKey: kCIInputImageKey)
+        let imageRect = myCIImage.extent()
+        avgFilter.setValue(CIVector(CGRect: imageRect), forKey: kCIInputExtentKey)
+        
+        let rep = NSCIImageRep(CIImage:avgFilter.outputImage)
+//        let endFastColorAvg = NSDate()
+//        println("The fastColorAvg function took \(endFastColorAvg.timeIntervalSinceDate(startFastColorAvg))")
+
+//            let startExtractCI = NSDate()
+//            let newCol = extractColorFromCIImage(avgFilter.outputImage)
+//            let endExtractCI = NSDate()
+//            println("The extractCI function took \(endExtractCI.timeIntervalSinceDate(startExtractCI))")
+
+        let newImage = NSImage(size: rep.size)
+        newImage.addRepresentation(rep)
+        let newCol = extractColor(newImage)
+        return newCol
     }
     
     func extractColor(theImage: NSImage) -> NSColor {
@@ -96,17 +90,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
             CGContextDrawImage(context, CGRectMake(0, 0, 1, 1),maskRef)
 
-            return NSColor(calibratedRed: CGFloat(pixel.red) / CGFloat(255.0),
-                            green: CGFloat(pixel.green) / CGFloat(255.0),
-                            blue: CGFloat(pixel.blue) / CGFloat(255.0),
-                            alpha: CGFloat(pixel.alpha) / CGFloat(255.0))
+            let r = CGFloat(pixel.red) / CGFloat(255.0)
+            let g = CGFloat(pixel.green) / CGFloat(255.0)
+            let b = CGFloat(pixel.blue) / CGFloat(255.0)
+            let a = CGFloat(pixel.alpha) / CGFloat(255.0)
+            return NSColor(calibratedRed: r, green: g, blue: b, alpha: a)
         }
         return NSColor()
     }
     
-//    func colorAvg(canvas: NSView) -> NSColor {
+    func extractColorFromCIImage(theImage: CIImage) ->NSColor {
+        var pixel = Pixel(red: 0, green: 0, blue: 0, alpha: 0)
+        let curCIContext = NSGraphicsContext.currentContext()?.CIContext
+        let extent = theImage.extent()
+        curCIContext?.render(theImage, toBitmap: &pixel, rowBytes: 4, bounds: theImage.extent() , format: kCIFormatARGB8, colorSpace: CGColorSpaceCreateDeviceRGB())
+        
+        let r = CGFloat(pixel.green) / CGFloat(255.0)
+        let g = CGFloat(pixel.blue) / CGFloat(255.0)
+        let b = CGFloat(pixel.alpha) / CGFloat(255.0)
+        let a = CGFloat(pixel.red) / CGFloat(255.0)
+        return NSColor(calibratedRed: r, green: g, blue: b, alpha: a)
+    }
+    
+/* Slow & naive (but working) version.
     func colorAvg(imageName: String) -> NSColor {
-        //CGBitmapInfo(rawValue: CGImageAlphaInfo.PremultipliedLast.rawValue)
+
         var rgba: [CGFloat] = [2.0,2,3,4]
         let theImage = NSImage(named: imageName)
         
@@ -152,12 +160,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             rgba[1] = rgba[1] / total
             rgba[2] = rgba[2] / total
             rgba[3] = rgba[3] / total
-            //        var theImageView = NSImageView(frame: NSMakeRect(20, 0, 200, 200))
-            //        theImageView.image = NSImage(CGImage: maskRef, size: NSZeroSize)
-            //        canvas.addSubview(theImageView)
         }
         return NSColor(calibratedRed: rgba[0], green: rgba[1], blue: rgba[2], alpha: rgba[3])
     }
-
+*/
 }
 
