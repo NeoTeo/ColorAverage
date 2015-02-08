@@ -212,8 +212,6 @@ class DragView: NSView, NSDraggingDestination {
         if myArray.containsObject(NSURLPboardType) {
             if let fileURL = NSURL(fromPasteboard: pboard) {
                 delegate?.dropViewDidReceiveURL(fileURL)
-                    
-                println("Got this URL: \(fileURL)")
             }
         }
         return true
