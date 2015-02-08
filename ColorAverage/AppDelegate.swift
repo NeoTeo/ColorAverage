@@ -20,6 +20,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
 
     @IBOutlet weak var window: NSWindow!
 
+    @IBOutlet weak var redLabel: NSTextField!
+    @IBOutlet weak var greenLabel: NSTextField!
+    @IBOutlet weak var blueLabel: NSTextField!
+    @IBOutlet weak var alphaLabel: NSTextField!
+    
+    @IBOutlet weak var imageColorWell: NSColorWell!
+    
     func applicationDidFinishLaunching(aNotification: NSNotification) {
 
         let canvasDims = NSSize(width: 300, height: 300)
@@ -28,7 +35,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         canvas.delegate = self
         canvas.wantsLayer = true
 
-
+        
         window.contentView.addSubview(canvas)
     }
 
@@ -148,26 +155,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
 */
     
     func dropViewDidReceiveURL(theURL: NSURL) {
-        //if let aFileURL = NSURL(fileURLWithPath: "/Users/teo/source/Apple/OSX/ColorAverage/ColorAverage/toored.jpg") {
-            if let avgCol = fastColorAvg(theURL) {
-                let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
-                
-                print("Red: \(avgCol.redComponent), ")
-                print("green: \(avgCol.greenComponent), ")
-                print("blue: \(avgCol.blueComponent), ")
-                println("alpha: \(avgCol.alphaComponent)")
-                println("The complement:")
-                print("Red: \(complement.redComponent), ")
-                print("green: \(complement.greenComponent), ")
-                print("blue: \(complement.blueComponent), ")
-                println("alpha: \(complement.alphaComponent)")
-                
-                window.backgroundColor = complement
-                
-            }
-        }
 
-    //}
+        if let avgCol = fastColorAvg(theURL) {
+            let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
+
+            //let colorLabel = NSTextField(frame: CGRectMake(10, 10, 100, 40))
+            redLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.redComponent*255))
+            greenLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.greenComponent*255))
+            blueLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.blueComponent*255))
+            alphaLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.alphaComponent*255))
+            //window.contentView.addSubview(colorLabel)
+            imageColorWell.color = avgCol
+            
+//            print("Red: \(avgCol.redComponent), ")
+//            print("green: \(avgCol.greenComponent), ")
+//            print("blue: \(avgCol.blueComponent), ")
+//            println("alpha: \(avgCol.alphaComponent)")
+//            println("The complement:")
+//            print("Red: \(complement.redComponent), ")
+//            print("green: \(complement.greenComponent), ")
+//            print("blue: \(complement.blueComponent), ")
+//            println("alpha: \(complement.alphaComponent)")
+            
+            window.backgroundColor = complement
+            
+        }
+    }
 }
 
 protocol DropViewDelegate {
@@ -189,7 +202,6 @@ class DragView: NSView, NSDraggingDestination {
     }
     
     override func draggingEntered(sender: NSDraggingInfo) -> NSDragOperation {
-        println("yay")
         return NSDragOperation.Copy
     }
     
