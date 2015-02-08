@@ -16,7 +16,7 @@ struct Pixel {
 }
 
 @NSApplicationMain
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
 
     @IBOutlet weak var window: NSWindow!
 
@@ -24,28 +24,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let canvasDims = NSSize(width: 300, height: 300)
         let canvasPos = NSMakePoint(0,0)
-        let canvas = NSView(frame: NSMakeRect(canvasPos.x, canvasPos.y, canvasDims.width, canvasDims.height))
-        
+        let canvas = DragView(frame: NSMakeRect(canvasPos.x, canvasPos.y, canvasDims.width, canvasDims.height))
+        canvas.delegate = self
         canvas.wantsLayer = true
 
-        if let aFileURL = NSURL(fileURLWithPath: "/Users/teo/source/Apple/OSX/ColorAverage/ColorAverage/toored.jpg") {
-            if let avgCol = fastColorAvg(aFileURL) {
-                let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
-                
-                print("Red: \(avgCol.redComponent), ")
-                print("green: \(avgCol.greenComponent), ")
-                print("blue: \(avgCol.blueComponent), ")
-                println("alpha: \(avgCol.alphaComponent)")
-                println("The complement:")
-                print("Red: \(complement.redComponent), ")
-                print("green: \(complement.greenComponent), ")
-                print("blue: \(complement.blueComponent), ")
-                println("alpha: \(complement.alphaComponent)")
-                
-                window.backgroundColor = complement
-
-            }
-        }
 
         window.contentView.addSubview(canvas)
     }
@@ -164,5 +146,64 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return NSColor(calibratedRed: rgba[0], green: rgba[1], blue: rgba[2], alpha: rgba[3])
     }
 */
+    
+    func dropViewDidReceiveURL(theURL: NSURL) {
+        //if let aFileURL = NSURL(fileURLWithPath: "/Users/teo/source/Apple/OSX/ColorAverage/ColorAverage/toored.jpg") {
+            if let avgCol = fastColorAvg(theURL) {
+                let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
+                
+                print("Red: \(avgCol.redComponent), ")
+                print("green: \(avgCol.greenComponent), ")
+                print("blue: \(avgCol.blueComponent), ")
+                println("alpha: \(avgCol.alphaComponent)")
+                println("The complement:")
+                print("Red: \(complement.redComponent), ")
+                print("green: \(complement.greenComponent), ")
+                print("blue: \(complement.blueComponent), ")
+                println("alpha: \(complement.alphaComponent)")
+                
+                window.backgroundColor = complement
+                
+            }
+        }
+
+    //}
 }
 
+protocol DropViewDelegate {
+    func dropViewDidReceiveURL(theURL: NSURL)
+}
+
+class DragView: NSView, NSDraggingDestination {
+    var delegate: DropViewDelegate?
+    
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        let types = [NSFilenamesPboardType]
+        registerForDraggedTypes(types)
+    }
+    
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func draggingEntered(sender: NSDraggingInfo) -> NSDragOperation {
+        println("yay")
+        return NSDragOperation.Copy
+    }
+    
+    override func performDragOperation(sender: NSDraggingInfo) -> Bool {
+        let pboard = sender.draggingPasteboard()
+        let myArray = pboard.types! as NSArray
+        
+        if myArray.containsObject(NSURLPboardType) {
+            if let fileURL = NSURL(fromPasteboard: pboard) {
+                delegate?.dropViewDidReceiveURL(fileURL)
+                    
+                println("Got this URL: \(fileURL)")
+            }
+        }
+        return true
+    }
+}
