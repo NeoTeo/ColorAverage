@@ -29,7 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
     
     func applicationDidFinishLaunching(aNotification: NSNotification) {
 
-        let canvasDims = NSSize(width: 300, height: 300)
+        let canvasDims = NSSize(width: window.frame.width, height: window.frame.height)
         let canvasPos = NSMakePoint(0,0)
         let canvas = DragView(frame: NSMakeRect(canvasPos.x, canvasPos.y, canvasDims.width, canvasDims.height))
         canvas.delegate = self
@@ -72,7 +72,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         var pixel = Pixel(red: 0, green: 0, blue: 0, alpha: 0)
         if let imageData = theImage.TIFFRepresentation {
             var source = CGImageSourceCreateWithData(imageData as CFDataRef, nil)
-            let maskRef = CGImageSourceCreateImageAtIndex(source, UInt(0), nil)
+            let maskRef = CGImageSourceCreateImageAtIndex(source, 0, nil)
             var colorSpace = CGColorSpaceCreateDeviceRGB()
             var bitmapInfo = CGBitmapInfo.ByteOrder32Big | CGBitmapInfo(CGImageAlphaInfo.PremultipliedLast.rawValue)
             var context = CGBitmapContextCreate(&pixel, 1, 1, 8, 4, colorSpace, bitmapInfo)
@@ -159,23 +159,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         if let avgCol = fastColorAvg(theURL) {
             let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
 
-            //let colorLabel = NSTextField(frame: CGRectMake(10, 10, 100, 40))
-            redLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.redComponent*255))
-            greenLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.greenComponent*255))
-            blueLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.blueComponent*255))
-            alphaLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.alphaComponent*255))
-            //window.contentView.addSubview(colorLabel)
+            redLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.redComponent*255)) as! String
+            greenLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.greenComponent*255)) as! String
+            blueLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.blueComponent*255)) as! String
+            alphaLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.alphaComponent*255)) as! String
+
             imageColorWell.color = avgCol
-            
-//            print("Red: \(avgCol.redComponent), ")
-//            print("green: \(avgCol.greenComponent), ")
-//            print("blue: \(avgCol.blueComponent), ")
-//            println("alpha: \(avgCol.alphaComponent)")
-//            println("The complement:")
-//            print("Red: \(complement.redComponent), ")
-//            print("green: \(complement.greenComponent), ")
-//            print("blue: \(complement.blueComponent), ")
-//            println("alpha: \(complement.alphaComponent)")
             
             window.backgroundColor = complement
             
@@ -209,10 +198,9 @@ class DragView: NSView, NSDraggingDestination {
         let pboard = sender.draggingPasteboard()
         let myArray = pboard.types! as NSArray
         
-        if myArray.containsObject(NSURLPboardType) {
-            if let fileURL = NSURL(fromPasteboard: pboard) {
+        if myArray.containsObject(NSURLPboardType),
+            let fileURL = NSURL(fromPasteboard: pboard) {
                 delegate?.dropViewDidReceiveURL(fileURL)
-            }
         }
         return true
     }
