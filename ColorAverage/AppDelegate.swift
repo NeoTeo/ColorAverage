@@ -25,6 +25,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
     @IBOutlet weak var blueLabel: NSTextField!
     @IBOutlet weak var alphaLabel: NSTextField!
     
+    @IBOutlet weak var beforeImage: NSImageView!
+    @IBOutlet weak var afterImage: NSImageView!
+    
     @IBOutlet weak var imageColorWell: NSColorWell!
     
     func applicationDidFinishLaunching(aNotification: NSNotification) {
@@ -43,29 +46,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         // Insert code here to tear down your application
     }
 
-    func fastColorAvg(fileURL: NSURL)-> NSColor? {
-        
-//        let startFastColorAvg = NSDate()
+    func fastColorAvg(inputImage: CIImage) -> NSColor? {
 
-        var myCIImage = CIImage(contentsOfURL: fileURL)
         let avgFilter = CIFilter(name: "CIAreaAverage")
-        avgFilter.setValue(myCIImage, forKey: kCIInputImageKey)
-        let imageRect = myCIImage.extent()
+        avgFilter.setValue(inputImage, forKey: kCIInputImageKey)
+        let imageRect = inputImage.extent()
         avgFilter.setValue(CIVector(CGRect: imageRect), forKey: kCIInputExtentKey)
         
-        let rep = NSCIImageRep(CIImage:avgFilter.outputImage)
-//        let endFastColorAvg = NSDate()
-//        println("The fastColorAvg function took \(endFastColorAvg.timeIntervalSinceDate(startFastColorAvg))")
-
-//            let startExtractCI = NSDate()
-//            let newCol = extractColorFromCIImage(avgFilter.outputImage)
-//            let endExtractCI = NSDate()
-//            println("The extractCI function took \(endExtractCI.timeIntervalSinceDate(startExtractCI))")
-
-        let newImage = NSImage(size: rep.size)
-        newImage.addRepresentation(rep)
+        let newImage = NSImageFromCIImage(avgFilter.outputImage)
         let newCol = extractColor(newImage)
         return newCol
+    }
+    
+    func NSImageFromCIImage(theCIImage: CIImage) -> NSImage {
+        let rep = NSCIImageRep(CIImage:theCIImage)
+        let newImage = NSImage(size: rep.size)
+        newImage.addRepresentation(rep)
+        return newImage
+    }
+    
+    func CIImageFromNSImage(inputImage: NSImage) ->CIImage? {
+        if let
+            imageData = inputImage.TIFFRepresentation,
+            bitmap = NSBitmapImageRep(data: imageData) {
+            return CIImage(bitmapImageRep: bitmap)
+        }
+        return nil
     }
     
     func extractColor(theImage: NSImage) -> NSColor {
@@ -101,62 +107,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         return NSColor(calibratedRed: r, green: g, blue: b, alpha: a)
     }
     
-/* Slow & naive (but working) version.
-    func colorAvg(imageName: String) -> NSColor {
-
-        var rgba: [CGFloat] = [2.0,2,3,4]
-        let theImage = NSImage(named: imageName)
-        
-        let imageRep = theImage?.representations[0] as NSImageRep?
-        theImage?.representations.count
-        if imageRep == nil { return NSColor(calibratedRed: rgba[0], green: rgba[1], blue: rgba[2], alpha: rgba[3]) }
-        
-        let imageW = imageRep!.pixelsWide
-        let imageH = imageRep!.pixelsHigh
-        
-        var pixels = [Pixel](count: imageW*imageH, repeatedValue: Pixel(red: 0, green: 0, blue: 0, alpha: 0))
-        //    var theImageView = NSImageView(frame: NSMakeRect(10, 0, 200, 200))
-        //    theImageView.image = theImage
-        //    canvas.addSubview(theImageView)
-        
-        if let imageData = theImage?.TIFFRepresentation {
-            var source = CGImageSourceCreateWithData(imageData as CFDataRef, nil)
-            let maskRef = CGImageSourceCreateImageAtIndex(source, UInt(0), nil)
-            
-            var colorSpace = CGColorSpaceCreateDeviceRGB()
-            var bitmapInfo = CGBitmapInfo.ByteOrder32Big | CGBitmapInfo(CGImageAlphaInfo.PremultipliedLast.rawValue)
-            var context = CGBitmapContextCreate(&pixels, UInt(imageW), UInt(imageH), 8, 4*UInt(imageW), colorSpace, bitmapInfo)
-            
-            CGContextDrawImage(context, CGRectMake(0, 0, CGFloat(imageW), CGFloat(imageH)),maskRef)
-            
-            var pixelData = CGDataProviderCopyData(CGImageGetDataProvider(maskRef))
-            var data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
-            
-            let yPos = 0
-            let xPos = 0
-            for yPos in 0..<imageH {
-                for xPos in 0..<imageW {
-                    let pixPos = (imageW * yPos) + xPos
-                    let aPixel = pixels[pixPos]
-                    rgba[0] += CGFloat(aPixel.red) / CGFloat(255.0)
-                    rgba[1] += CGFloat(aPixel.green) / CGFloat(255.0)
-                    rgba[2] +=  CGFloat(aPixel.blue) / CGFloat(255.0)
-                    rgba[3] += CGFloat(aPixel.alpha) / CGFloat(255.0)
-                }
-            }
-            let total = CGFloat(imageW*imageH)
-            rgba[0] = rgba[0] / total
-            rgba[1] = rgba[1] / total
-            rgba[2] = rgba[2] / total
-            rgba[3] = rgba[3] / total
-        }
-        return NSColor(calibratedRed: rgba[0], green: rgba[1], blue: rgba[2], alpha: rgba[3])
+    func makeSingleColorImage(theColor: NSColor, theSize: NSSize) ->NSImage {
+        let theImage = NSImage(size: theSize)
+        theImage.lockFocus()
+        theColor.setFill()
+        NSBezierPath.fillRect(NSMakeRect(0, 0, theSize.width, theSize.height))
+        theImage.unlockFocus()
+        return theImage
     }
-*/
+    
+    func applyOverlayFilter(theImage: CIImage, invColorAvgImage: CIImage) -> CIImage {
+        
+        let overlayFilter = CIFilter(name: "CIOverlayBlendMode")
+        overlayFilter.setValue(theImage, forKey: kCIInputImageKey)
+        overlayFilter.setValue(invColorAvgImage, forKey: kCIInputBackgroundImageKey)
+        return overlayFilter.outputImage
+    }
     
     func dropViewDidReceiveURL(theURL: NSURL) {
-
-        if let avgCol = fastColorAvg(theURL) {
+        let startCIImage = CIImage(contentsOfURL: theURL)
+        beforeImage.image = NSImageFromCIImage(startCIImage)
+        
+        if let avgCol = fastColorAvg(startCIImage) {
             let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
 
             redLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.redComponent*255)) as! String
@@ -166,11 +138,78 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
 
             imageColorWell.color = avgCol
             
-            window.backgroundColor = complement
+            //window.backgroundColor = complement
+            let imageSize = startCIImage.extent().size
+
+            let invImage = makeSingleColorImage(complement, theSize: imageSize)
+            let correctedCIImage = applyOverlayFilter(startCIImage, invColorAvgImage: CIImageFromNSImage(invImage)!)
             
+            afterImage.image = NSImageFromCIImage(correctedCIImage)// anImage
+            saveCIImageAsPNG(correctedCIImage, toPath: "/Users/teo/tmp/notred.png")
         }
     }
+    
+    func saveCIImageAsPNG(theImage: CIImage, toPath: String) {
+        let bitmap = NSBitmapImageRep(CIImage: theImage) as NSBitmapImageRep
+        let pngData = bitmap.representationUsingType(NSBitmapImageFileType.NSPNGFileType, properties: [:])
+        pngData?.writeToFile(toPath, atomically:false)
+    }
 }
+
+
+/* Slow & naive (but working) version.
+func colorAvg(imageName: String) -> NSColor {
+
+var rgba: [CGFloat] = [2.0,2,3,4]
+let theImage = NSImage(named: imageName)
+
+let imageRep = theImage?.representations[0] as NSImageRep?
+theImage?.representations.count
+if imageRep == nil { return NSColor(calibratedRed: rgba[0], green: rgba[1], blue: rgba[2], alpha: rgba[3]) }
+
+let imageW = imageRep!.pixelsWide
+let imageH = imageRep!.pixelsHigh
+
+var pixels = [Pixel](count: imageW*imageH, repeatedValue: Pixel(red: 0, green: 0, blue: 0, alpha: 0))
+//    var theImageView = NSImageView(frame: NSMakeRect(10, 0, 200, 200))
+//    theImageView.image = theImage
+//    canvas.addSubview(theImageView)
+
+if let imageData = theImage?.TIFFRepresentation {
+var source = CGImageSourceCreateWithData(imageData as CFDataRef, nil)
+let maskRef = CGImageSourceCreateImageAtIndex(source, UInt(0), nil)
+
+var colorSpace = CGColorSpaceCreateDeviceRGB()
+var bitmapInfo = CGBitmapInfo.ByteOrder32Big | CGBitmapInfo(CGImageAlphaInfo.PremultipliedLast.rawValue)
+var context = CGBitmapContextCreate(&pixels, UInt(imageW), UInt(imageH), 8, 4*UInt(imageW), colorSpace, bitmapInfo)
+
+CGContextDrawImage(context, CGRectMake(0, 0, CGFloat(imageW), CGFloat(imageH)),maskRef)
+
+var pixelData = CGDataProviderCopyData(CGImageGetDataProvider(maskRef))
+var data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
+
+let yPos = 0
+let xPos = 0
+for yPos in 0..<imageH {
+for xPos in 0..<imageW {
+let pixPos = (imageW * yPos) + xPos
+let aPixel = pixels[pixPos]
+rgba[0] += CGFloat(aPixel.red) / CGFloat(255.0)
+rgba[1] += CGFloat(aPixel.green) / CGFloat(255.0)
+rgba[2] +=  CGFloat(aPixel.blue) / CGFloat(255.0)
+rgba[3] += CGFloat(aPixel.alpha) / CGFloat(255.0)
+}
+}
+let total = CGFloat(imageW*imageH)
+rgba[0] = rgba[0] / total
+rgba[1] = rgba[1] / total
+rgba[2] = rgba[2] / total
+rgba[3] = rgba[3] / total
+}
+return NSColor(calibratedRed: rgba[0], green: rgba[1], blue: rgba[2], alpha: rgba[3])
+}
+*/
+
 
 protocol DropViewDelegate {
     func dropViewDidReceiveURL(theURL: NSURL)
