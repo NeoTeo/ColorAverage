@@ -1,3 +1,6 @@
+Color Cast Remover
+==================
+
 An color cast remover I wrote to automate the task.
 
 Drag an image with a color cast onto the the application window to get
