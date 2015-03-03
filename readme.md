@@ -5,6 +5,8 @@ the average color of the image and to have its inverse applied to it as an overl
 
 Currently hardcoded to save out to my own tmp directory.
 
+![](example.png?raw=true "Screenshot of image filtered.")
+
 Todo:
 * Add ability to save in supported file formats to a user selected location.
 * Show inverse color and hex values.
