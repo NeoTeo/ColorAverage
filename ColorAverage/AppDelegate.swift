@@ -28,6 +28,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
     @IBOutlet weak var beforeImage: NSImageView!
     @IBOutlet weak var afterImage: NSImageView!
     
+    @IBOutlet weak var beforeLabel: NSTextField!
+    @IBOutlet weak var afterLabel: NSTextField!
     @IBOutlet weak var imageColorWell: NSColorWell!
     
     func applicationDidFinishLaunching(aNotification: NSNotification) {
@@ -124,6 +126,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
     func dropViewDidReceiveURL(theURL: NSURL) {
         let startCIImage = CIImage(contentsOfURL: theURL)
         beforeImage.image = NSImageFromCIImage(startCIImage)
+        beforeLabel.hidden = false
         
         if let avgCol = fastColorAvg(startCIImage) {
             let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
@@ -142,6 +145,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
             let correctedCIImage = applyOverlayFilter(startCIImage, invColorAvgImage: CIImageFromNSImage(invImage)!)
             
             afterImage.image = NSImageFromCIImage(correctedCIImage)// anImage
+            afterLabel.hidden = false
+            
             saveCIImageAsPNG(correctedCIImage, toPath: "/Users/teo/tmp/notred.png")
         }
     }

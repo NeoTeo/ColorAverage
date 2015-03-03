@@ -14,4 +14,5 @@ Todo:
 * Add ability to save in supported file formats to a user selected location.
 * Show inverse color and hex values.
 * Add slider to control amount of overlay.
+* Make window nicely resizable.
 
