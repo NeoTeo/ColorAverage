@@ -1,7 +1,7 @@
 Color Cast Remover
 ==================
 
-An color cast remover I wrote to automate the task.
+A simple drag and drop color cast remover.
 
 Drag an image with a color cast onto the the application window to get
 the average color of the image and to have its inverse applied to it as an overlay filter.
