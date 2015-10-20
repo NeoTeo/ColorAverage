@@ -41,17 +41,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         canvas.wantsLayer = true
 
         
-        window.contentView.addSubview(canvas)
+        window.contentView!.addSubview(canvas)
     }
 
     func fastColorAvg(inputImage: CIImage) -> NSColor? {
 
-        let avgFilter = CIFilter(name: "CIAreaAverage")
+        guard let avgFilter = CIFilter(name: "CIAreaAverage") else { return nil }
         avgFilter.setValue(inputImage, forKey: kCIInputImageKey)
-        let imageRect = inputImage.extent()
+        let imageRect = inputImage.extent
         avgFilter.setValue(CIVector(CGRect: imageRect), forKey: kCIInputExtentKey)
         
-        let newImage = NSImageFromCIImage(avgFilter.outputImage)
+        let newImage = NSImageFromCIImage(avgFilter.outputImage!)
         let newCol = extractColor(newImage)
         return newCol
     }
@@ -72,14 +72,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         return nil
     }
     
-    func extractColor(theImage: NSImage) -> NSColor {
+    func extractColor(theImage: NSImage) -> NSColor? {
         var pixel = Pixel(red: 0, green: 0, blue: 0, alpha: 0)
         if let imageData = theImage.TIFFRepresentation {
-            var source = CGImageSourceCreateWithData(imageData as CFDataRef, nil)
+            guard let source = CGImageSourceCreateWithData(imageData as CFDataRef, nil) else { return nil }
             let maskRef = CGImageSourceCreateImageAtIndex(source, 0, nil)
-            var colorSpace = CGColorSpaceCreateDeviceRGB()
-            var bitmapInfo = CGBitmapInfo.ByteOrder32Big | CGBitmapInfo(CGImageAlphaInfo.PremultipliedLast.rawValue)
-            var context = CGBitmapContextCreate(&pixel, 1, 1, 8, 4, colorSpace, bitmapInfo)
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+//            var bitmapInfo = CGBitmapInfo.ByteOrder32Big.union(CGBitmapInfo(rawValue: CGImageAlphaInfo.PremultipliedLast.rawValue))
+            let context = CGBitmapContextCreate(&pixel, 1, 1, 8, 4, colorSpace, CGImageAlphaInfo.PremultipliedLast.rawValue)
             
             CGContextDrawImage(context, CGRectMake(0, 0, 1, 1),maskRef)
 
@@ -89,14 +89,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
             let a = CGFloat(pixel.alpha) / CGFloat(255.0)
             return NSColor(calibratedRed: r, green: g, blue: b, alpha: a)
         }
-        return NSColor()
+        return nil
     }
     
     func extractColorFromCIImage(theImage: CIImage) ->NSColor {
         var pixel = Pixel(red: 0, green: 0, blue: 0, alpha: 0)
         let curCIContext = NSGraphicsContext.currentContext()?.CIContext
-        let extent = theImage.extent()
-        curCIContext?.render(theImage, toBitmap: &pixel, rowBytes: 4, bounds: theImage.extent() , format: kCIFormatARGB8, colorSpace: CGColorSpaceCreateDeviceRGB())
+        //let extent = theImage.extent
+        curCIContext?.render(theImage, toBitmap: &pixel, rowBytes: 4, bounds: theImage.extent , format: kCIFormatARGB8, colorSpace: CGColorSpaceCreateDeviceRGB())
         
         let r = CGFloat(pixel.green) / CGFloat(255.0)
         let g = CGFloat(pixel.blue) / CGFloat(255.0)
@@ -114,9 +114,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         return theImage
     }
     
-    func applyOverlayFilter(theImage: CIImage, invColorAvgImage: CIImage) -> CIImage {
+    func applyOverlayFilter(theImage: CIImage, invColorAvgImage: CIImage) -> CIImage? {
         
-        let overlayFilter = CIFilter(name: "CIOverlayBlendMode")
+        guard let overlayFilter = CIFilter(name: "CIOverlayBlendMode") else { return nil }
         overlayFilter.setValue(invColorAvgImage, forKey: kCIInputImageKey)
         overlayFilter.setValue(theImage, forKey: kCIInputBackgroundImageKey)
 
@@ -124,25 +124,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
     }
     
     func dropViewDidReceiveURL(theURL: NSURL) {
-        let startCIImage = CIImage(contentsOfURL: theURL)
+        guard let startCIImage = CIImage(contentsOfURL: theURL) else { return }
         beforeImage.image = NSImageFromCIImage(startCIImage)
         beforeLabel.hidden = false
         
         if let avgCol = fastColorAvg(startCIImage) {
             let complement = NSColor(calibratedRed: 1-avgCol.redComponent, green: 1-avgCol.greenComponent, blue: 1-avgCol.blueComponent, alpha: avgCol.alphaComponent)
 
-            redLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.redComponent*255)) as! String
-            greenLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.greenComponent*255)) as! String
-            blueLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.blueComponent*255)) as! String
-            alphaLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.alphaComponent*255)) as! String
+            redLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.redComponent*255)) as String
+            greenLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.greenComponent*255)) as String
+            blueLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.blueComponent*255)) as String
+            alphaLabel.stringValue = NSString(format:"0x%2x",UInt(avgCol.alphaComponent*255)) as String
 
             imageColorWell.color = avgCol
             
             //window.backgroundColor = complement
-            let imageSize = startCIImage.extent().size
+            let imageSize = startCIImage.extent.size
 
             let invImage = makeSingleColorImage(complement, theSize: imageSize)
-            let correctedCIImage = applyOverlayFilter(startCIImage, invColorAvgImage: CIImageFromNSImage(invImage)!)
+            guard let correctedCIImage = applyOverlayFilter(startCIImage, invColorAvgImage: CIImageFromNSImage(invImage)!) else { return }
             
             afterImage.image = NSImageFromCIImage(correctedCIImage)// anImage
             afterLabel.hidden = false
@@ -162,7 +162,7 @@ protocol DropViewDelegate {
     func dropViewDidReceiveURL(theURL: NSURL)
 }
 
-class DragView: NSView, NSDraggingDestination {
+class DragView: NSView {
     var delegate: DropViewDelegate?
     
     override init(frame: NSRect) {
