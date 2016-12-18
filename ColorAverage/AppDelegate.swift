@@ -64,9 +64,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
     }
     
     func CIImageFromNSImage(_ inputImage: NSImage) ->CIImage? {
-        if let
-            imageData = inputImage.tiffRepresentation,
-            bitmap = NSBitmapImageRep(data: imageData) {
+        if let imageData = inputImage.tiffRepresentation,
+            let bitmap = NSBitmapImageRep(data: imageData) {
             return CIImage(bitmapImageRep: bitmap)
         }
         return nil
@@ -81,7 +80,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
 //            var bitmapInfo = CGBitmapInfo.ByteOrder32Big.union(CGBitmapInfo(rawValue: CGImageAlphaInfo.PremultipliedLast.rawValue))
             let context = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
             
-            context?.draw(in: CGRect(x: 0, y: 0,width: 1,height: 1),image: maskRef!)
+            context?.draw(maskRef!, in: CGRect(x: 0, y: 0,width: 1,height: 1))
+//            context?.draw(in: CGRect(x: 0, y: 0,width: 1,height: 1),image: maskRef!)
 
             let r = CGFloat(pixel.red) / CGFloat(255.0)
             let g = CGFloat(pixel.green) / CGFloat(255.0)
@@ -91,6 +91,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, DropViewDelegate {
         }
         return nil
     }
+    
     
     func extractColorFromCIImage(_ theImage: CIImage) ->NSColor {
         var pixel = Pixel(red: 0, green: 0, blue: 0, alpha: 0)
